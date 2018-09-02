@@ -1,5 +1,5 @@
 ### Web Crawler
-This is implementation of web crawler which extract urls from input urls until define depth.
+This is implementation of a web crawler which extract URLs from input URLs source until define depth.
 
 ### Requirments
 python 2.7+

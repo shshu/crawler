@@ -1,25 +1,29 @@
+#!/usr/bin/env python
+
 import requests
 import md5
 import logging
 from queue import Queue, Empty
 from multiprocessing.dummy import Pool as ThreadPool 
 from urlparse import urlparse
+from optparse import OptionParser
 from bs4 import BeautifulSoup
 
-# create logger with 'spam_application'
+# create logger
 logger = logging.getLogger('Crawler')
 logger.setLevel(logging.DEBUG)
 logging.basicConfig(level=logging.DEBUG, format='%(threadName)s %(asctime)s- %(levelname)s - %(message)s')
 
-# TODO get number of workers from command line
 MAX_WORKERS = 8
 DEPTH = 3
 
 class Cralwer:
-    def __init__(self, queue):
-        self.queue = queue
-        self.pool = ThreadPool(MAX_WORKERS)
+    def __init__(self, workers, depth, input_file):
+        self.queue = Queue()
+        self.pool = ThreadPool(workers)
         self.visited = set([])
+        self.input_file = input_file
+        self.depth = depth
     
     def getResponse(self, url):
         try:
@@ -56,9 +60,11 @@ class Cralwer:
             self.queue.put([child_url,depth-1]) 
 
     def run(self):
+        self.pool.apply_async(readFromFile,[self.queue, self.input_file, self.depth])
         while True:
             try:
                 url, depth = self.queue.get(timeout=30)
+                print url,"xx"
                 md5Url = md5.md5(url).digest()
                 if md5Url not in self.visited:
                     logging.debug(' URL: {}'.format(url))
@@ -69,13 +75,44 @@ class Cralwer:
             except Exception as e:
                 logging.warn(e)
                 continue
+
+def handleOpt(parser):
+    nworker = MAX_WORKERS
+    depth = DEPTH
+
+    parser.add_option("-f", "--input-file", dest="input_file",
+                      help="input image file", action="store", type="string")
+
+    parser.add_option("-d", "--depth", dest="depth",
+                      help="depth to crawl", action="store", type="int")
+
+    parser.add_option("-w", "--workers", dest="workers",
+                      help="number of workers", action="store", type="int")
     
+    (options, args) = parser.parse_args()
+
+    if None == options.input_file:
+        parser.error('Error: input file needed')
+
+    if None != options.workers and options.workers > 2:
+        nworker = options.workers
+
+    if None != options.depth and options.depth > 0:
+        depth = options.depth
+    return nworker,depth, options.input_file
+
+def readFromFile(queue, input_file, depth):
+    print input_file
+    with open(input_file) as fp:
+        line = fp.readline()
+        while line:
+            queue.put([line.rstrip(),depth])
+            line = fp.readline()
+    print 'done',depth
+
 if __name__ == '__main__':
-    queue = Queue()
-    # TODO get urls from streaming - command line 
-    # TODO get depth from command line
-    # TODO stream to file the output - command line
-    queue.put(['http://www.example.com',DEPTH])
-    app = Cralwer(queue)
+    parser = OptionParser()
+    nworker, depth, input_file = handleOpt(parser)
+    app = Cralwer(nworker, depth, input_file)
     logging.debug('Starting Cralwer...')
     app.run()

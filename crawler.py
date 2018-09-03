@@ -102,13 +102,11 @@ def handleOpt(parser):
     return nworker,depth, options.input_file
 
 def readFromFile(queue, input_file, depth):
-    print input_file
     with open(input_file) as fp:
         line = fp.readline()
         while line:
             queue.put([line.rstrip(),depth])
             line = fp.readline()
-    print 'done',depth
 
 if __name__ == '__main__':
     parser = OptionParser()

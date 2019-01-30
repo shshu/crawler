@@ -17,6 +17,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(threadName)s %(asctime)s- %(l
 MAX_WORKERS = 8
 DEPTH = 3
 
+
 class Cralwer:
     def __init__(self, workers, depth, input_file):
         self.queue = Queue()
@@ -63,12 +64,12 @@ class Cralwer:
         self.pool.apply_async(read_from_file, [self.queue, self.input_file, self.depth])
         while True:
             try:
-                url, depth = self.queue.get(timeout=30)
+                url, depth = self.queue.get(timeout=5)
                 md5Url = md5.md5(url).digest()
                 if md5Url not in self.visited:
                     logging.debug(' URL: {}'.format(url))
                     self.visited.add(md5Url)
-                    self.pool.apply_async(self.crawel,[url,depth])
+                    self.pool.apply_async(self.crawel, [url, depth])
             except Empty:
                 return
             except Exception as e:

@@ -3,10 +3,10 @@
 import md5
 import logging
 import requests
+import argparse
 from Queue import Queue, Empty
 from multiprocessing.dummy import Pool as ThreadPool 
 from urlparse import urlparse
-from optparse import OptionParser
 from bs4 import BeautifulSoup
 
 # create logger
@@ -93,42 +93,31 @@ class Cralwer:
 
                 self.pool.map(self.crawel, working_list)
 
-                # url, depth = self.queue.get(timeout=5)
-                # md5Url = md5.md5(url).digest()
-                # if md5Url not in self.visited:
-                #     logging.debug(' URL: {}'.format(url))
-                #     self.visited.add(md5Url)
-                #     self.pool.apply_async(self.crawel,[url,depth])
             except Exception as e:
                 logging.warn(e)
                 continue
 
 
-def handle_opt(parser):
+def handle_opt():
     nworker = MAX_WORKERS
     depth = DEPTH
 
-    parser.add_option("-f", "--input-file", dest="input_file",
-                      help="input image file", action="store", type="string")
+    parser = argparse.ArgumentParser(description='Crawler.')
+    parser.add_argument("-f", "--input-file", dest="input_file", help="input image file")
+    parser.add_argument("-d", "--depth", dest="depth", help="depth to crawl",action="store", type=int)
+    parser.add_argument("-w", "--workers", dest="workers", help="number of workers", action="store", type=int)
+    args = parser.parse_args()
 
-    parser.add_option("-d", "--depth", dest="depth",
-                      help="depth to crawl", action="store", type="int")
-
-    parser.add_option("-w", "--workers", dest="workers",
-                      help="number of workers", action="store", type="int")
-    
-    (options, args) = parser.parse_args()
-
-    if options.input_file is None:
+    if args.input_file is None:
         parser.error('Error: input file needed')
 
-    if options.workers is not None and options.workers > 2:
-        nworker = options.workers
+    if args.workers is not None and args.workers > 2:
+        nworker = args.workers
 
-    if options.depth is not None and options.depth > 0:
-        depth = options.depth
+    if args.depth is not None and args.depth > 0:
+        depth = args.depth
 
-    return nworker, depth, options.input_file
+    return nworker, depth, args.input_file
 
 
 def read_from_file(queue, input_file, depth):
@@ -140,8 +129,7 @@ def read_from_file(queue, input_file, depth):
 
 
 if __name__ == '__main__':
-    parser = OptionParser()
-    nworker, depth, input_file = handle_opt(parser)
+    nworker, depth, input_file = handle_opt()
     app = Cralwer(nworker, depth, input_file)
     logging.debug('Starting Cralwer...')
     app.run()

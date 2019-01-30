@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
-import requests
 import md5
 import logging
+import argparse
+import requests
 from Queue import Queue, Empty
-from multiprocessing.dummy import Pool as ThreadPool 
+from multiprocessing.dummy import Pool as ThreadPool
 from urlparse import urlparse
-from optparse import OptionParser
 from bs4 import BeautifulSoup
 
 # create logger
@@ -25,17 +25,17 @@ class Cralwer:
         self.input_file = input_file
         self.depth = depth
     
-    def getResponse(self, url):
+    def get_response(self, url):
         try:
             response = requests.get(url)
             return response
         except requests.RequestException:
             return
     
-    def doSomthingData(self, reponse):
+    def do_somthing_data(self, reponse):
         pass
     
-    def getHrefFromResponse(self, response, url):
+    def get_href_from_response(self, response, url):
         base_url = urlparse(url)
         child_urls = []
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -48,19 +48,19 @@ class Cralwer:
         return child_urls
     
     def crawel(self, url, depth):
-        response = self.getResponse(url)
-        self.doSomthingData(response)
+        response = self.get_response(url)
+        self.do_somthing_data(response)
         if response is None:
             return
         
         if depth == 0:
             return
         
-        for child_url in self.getHrefFromResponse(response, url):
+        for child_url in self.get_href_from_response(response, url):
             self.queue.put([child_url,depth-1]) 
 
     def run(self):
-        self.pool.apply_async(readFromFile,[self.queue, self.input_file, self.depth])
+        self.pool.apply_async(read_from_file, [self.queue, self.input_file, self.depth])
         while True:
             try:
                 url, depth = self.queue.get(timeout=30)
@@ -75,32 +75,32 @@ class Cralwer:
                 logging.warn(e)
                 continue
 
-def handleOpt(parser):
+def handle_opt():
     nworker = MAX_WORKERS
     depth = DEPTH
 
-    parser.add_option("-f", "--input-file", dest="input_file",
-                      help="input image file", action="store", type="string")
+    nworker = MAX_WORKERS
+    depth = DEPTH
 
-    parser.add_option("-d", "--depth", dest="depth",
-                      help="depth to crawl", action="store", type="int")
+    parser = argparse.ArgumentParser(description='Crawler.')
+    parser.add_argument("-f", "--input-file", dest="input_file", help="input image file")
+    parser.add_argument("-d", "--depth", dest="depth", help="depth to crawl", action="store", type=int)
+    parser.add_argument("-w", "--workers", dest="workers", help="number of workers", action="store", type=int)
+    args = parser.parse_args()
 
-    parser.add_option("-w", "--workers", dest="workers",
-                      help="number of workers", action="store", type="int")
-    
-    (options, args) = parser.parse_args()
-
-    if None == options.input_file:
+    if args.input_file is None:
         parser.error('Error: input file needed')
 
-    if None != options.workers and options.workers > 2:
-        nworker = options.workers
+    if args.workers is not None and args.workers > 2:
+        nworker = args.workers
 
-    if None != options.depth and options.depth > 0:
-        depth = options.depth
-    return nworker,depth, options.input_file
+    if args.depth is not None and args.depth > 0:
+        depth = args.depth
 
-def readFromFile(queue, input_file, depth):
+    return nworker, depth, args.input_file
+
+
+def read_from_file(queue, input_file, depth):
     with open(input_file) as fp:
         line = fp.readline()
         while line:
@@ -109,13 +109,7 @@ def readFromFile(queue, input_file, depth):
 
 
 if __name__ == '__main__':
-    import time
-
-    start_time = time.time()
-
-    parser = OptionParser()
-    nworker, depth, input_file = handleOpt(parser)
+    nworker, depth, input_file = handle_opt()
     app = Cralwer(nworker, depth, input_file)
     logging.debug('Starting Cralwer...')
     app.run()
-    print("--- %s seconds ---" % (time.time() - start_time))

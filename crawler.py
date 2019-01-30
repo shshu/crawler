@@ -1,8 +1,8 @@
 #!/usr/bin/env python2
 
-import requests
 import md5
 import logging
+import requests
 from Queue import Queue, Empty
 from multiprocessing.dummy import Pool as ThreadPool 
 from urlparse import urlparse
@@ -32,17 +32,17 @@ class Cralwer:
         self.input_file = input_file
         self.depth = depth
     
-    def getResponse(self, url):
+    def get_response(self, url):
         try:
             response = requests.get(url)
             return response
         except requests.RequestException:
             return
     
-    def doSomthingData(self, reponse):
+    def do_somthing_data(self, reponse):
         pass
     
-    def getHrefFromResponse(self, response, url):
+    def get_href_from_response(self, response, url):
         base_url = urlparse(url)
         child_urls = []
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -58,18 +58,18 @@ class Cralwer:
         url = url_depth.url
         depth = url_depth.depth
 
-        response = self.getResponse(url)
-        self.doSomthingData(response)
+        response = self.get_response(url)
+        self.do_somthing_data(response)
         if response is None:
             return
         
         if depth == 0:
             return
         
-        for child_url in self.getHrefFromResponse(response, url):
+        for child_url in self.get_href_from_response(response, url):
             self.queue.put([child_url, depth-1])
 
-    def getWorkingList(self):
+    def get_working_list(self):
         working_list = list()
         while True:
             try:
@@ -83,10 +83,10 @@ class Cralwer:
                 return working_list
 
     def run(self):
-        self.pool.apply_async(readFromFile, [self.queue, self.input_file, self.depth])
+        self.pool.apply_async(read_from_file, [self.queue, self.input_file, self.depth])
         while True:
             try:
-                working_list = self.getWorkingList()
+                working_list = self.get_working_list()
 
                 if len(working_list) == 0:
                     return
@@ -104,7 +104,7 @@ class Cralwer:
                 continue
 
 
-def handleOpt(parser):
+def handle_opt(parser):
     nworker = MAX_WORKERS
     depth = DEPTH
 
@@ -131,7 +131,7 @@ def handleOpt(parser):
     return nworker, depth, options.input_file
 
 
-def readFromFile(queue, input_file, depth):
+def read_from_file(queue, input_file, depth):
     with open(input_file) as fp:
         line = fp.readline()
         while line:
@@ -141,7 +141,7 @@ def readFromFile(queue, input_file, depth):
 
 if __name__ == '__main__':
     parser = OptionParser()
-    nworker, depth, input_file = handleOpt(parser)
+    nworker, depth, input_file = handle_opt(parser)
     app = Cralwer(nworker, depth, input_file)
     logging.debug('Starting Cralwer...')
     app.run()

@@ -1,9 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 import requests
 import md5
 import logging
-from queue import Queue, Empty
+from Queue import Queue, Empty
 from multiprocessing.dummy import Pool as ThreadPool 
 from urlparse import urlparse
 from optparse import OptionParser
@@ -16,6 +16,13 @@ logging.basicConfig(level=logging.DEBUG, format='%(threadName)s %(asctime)s- %(l
 
 MAX_WORKERS = 8
 DEPTH = 3
+
+
+class URLDepth(object):
+    def __init__(self, url, depth):
+        self.url = url
+        self.depth = depth
+
 
 class Cralwer:
     def __init__(self, workers, depth, input_file):
@@ -47,7 +54,10 @@ class Cralwer:
             child_urls.append(child_url)
         return child_urls
     
-    def crawel(self, url, depth):
+    def crawel(self, url_depth):
+        url = url_depth.url
+        depth = url_depth.depth
+
         response = self.getResponse(url)
         self.doSomthingData(response)
         if response is None:
@@ -57,24 +67,42 @@ class Cralwer:
             return
         
         for child_url in self.getHrefFromResponse(response, url):
-            self.queue.put([child_url,depth-1]) 
+            self.queue.put([child_url, depth-1])
 
-    def run(self):
-        self.pool.apply_async(readFromFile,[self.queue, self.input_file, self.depth])
+    def getWorkingList(self):
+        working_list = list()
         while True:
             try:
-                url, depth = self.queue.get(timeout=30)
-                print url,"xx"
+                url, depth = self.queue.get(timeout=5)
                 md5Url = md5.md5(url).digest()
                 if md5Url not in self.visited:
                     logging.debug(' URL: {}'.format(url))
                     self.visited.add(md5Url)
-                    self.pool.apply_async(self.crawel,[url,depth])
+                    working_list.append(URLDepth(url, depth))
             except Empty:
-                return
+                return working_list
+
+    def run(self):
+        self.pool.apply_async(readFromFile, [self.queue, self.input_file, self.depth])
+        while True:
+            try:
+                working_list = self.getWorkingList()
+
+                if len(working_list) == 0:
+                    return
+
+                self.pool.map(self.crawel, working_list)
+
+                # url, depth = self.queue.get(timeout=5)
+                # md5Url = md5.md5(url).digest()
+                # if md5Url not in self.visited:
+                #     logging.debug(' URL: {}'.format(url))
+                #     self.visited.add(md5Url)
+                #     self.pool.apply_async(self.crawel,[url,depth])
             except Exception as e:
                 logging.warn(e)
                 continue
+
 
 def handleOpt(parser):
     nworker = MAX_WORKERS
@@ -91,22 +119,25 @@ def handleOpt(parser):
     
     (options, args) = parser.parse_args()
 
-    if None == options.input_file:
+    if options.input_file is None:
         parser.error('Error: input file needed')
 
-    if None != options.workers and options.workers > 2:
+    if options.workers is not None and options.workers > 2:
         nworker = options.workers
 
-    if None != options.depth and options.depth > 0:
+    if options.depth is not None and options.depth > 0:
         depth = options.depth
-    return nworker,depth, options.input_file
+
+    return nworker, depth, options.input_file
+
 
 def readFromFile(queue, input_file, depth):
     with open(input_file) as fp:
         line = fp.readline()
         while line:
-            queue.put([line.rstrip(),depth])
+            queue.put([line.rstrip(), depth])
             line = fp.readline()
+
 
 if __name__ == '__main__':
     parser = OptionParser()

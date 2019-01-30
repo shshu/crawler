@@ -84,6 +84,7 @@ class Cralwer:
 
     def run(self):
         self.pool.apply_async(read_from_file, [self.queue, self.input_file, self.depth])
+
         while True:
             try:
                 working_list = self.get_working_list()
@@ -96,7 +97,6 @@ class Cralwer:
             except Exception as e:
                 logging.warn(e)
                 continue
-
 
 def handle_opt():
     nworker = MAX_WORKERS

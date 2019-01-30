@@ -3,7 +3,7 @@
 import requests
 import md5
 import logging
-from queue import Queue, Empty
+from Queue import Queue, Empty
 from multiprocessing.dummy import Pool as ThreadPool 
 from urlparse import urlparse
 from optparse import OptionParser
@@ -64,7 +64,6 @@ class Cralwer:
         while True:
             try:
                 url, depth = self.queue.get(timeout=30)
-                print url,"xx"
                 md5Url = md5.md5(url).digest()
                 if md5Url not in self.visited:
                     logging.debug(' URL: {}'.format(url))
@@ -108,9 +107,15 @@ def readFromFile(queue, input_file, depth):
             queue.put([line.rstrip(),depth])
             line = fp.readline()
 
+
 if __name__ == '__main__':
+    import time
+
+    start_time = time.time()
+
     parser = OptionParser()
     nworker, depth, input_file = handleOpt(parser)
     app = Cralwer(nworker, depth, input_file)
     logging.debug('Starting Cralwer...')
     app.run()
+    print("--- %s seconds ---" % (time.time() - start_time))
